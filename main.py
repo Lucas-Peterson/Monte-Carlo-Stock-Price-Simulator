@@ -15,7 +15,7 @@ SIMS: int = 200000
 MODEL: str = "bootstrap"   
 BOOTSTRAP_BLOCK: int = 5
 LOOKBACK_YEARS: int = 2     
-FLAT_PCT: float = 0.05  # 5% флэт     
+FLAT_PCT: float = 0.05  # 5% flat zone     
 OUT_DIR: str = "outputs"    
 SEED: int = 42
 
@@ -33,7 +33,7 @@ def fetch_history(ticker: str, lookback_years: int = 3) -> pd.DataFrame:
         auto_adjust=True,  
     )
     if df.empty:
-        raise RuntimeError(f"Сannot get any data about {ticker}")
+        raise RuntimeError(f"Cannot fetch any data for {ticker}")
     df = df[["Close"]].dropna()
     df["log_ret"] = np.log(df["Close"]).diff()
     df = df.dropna()
@@ -120,42 +120,42 @@ def plot_fan_chart(df_q: pd.DataFrame, ticker: str, out_path: str):
 
 
 def plot_boxplot(paths: np.ndarray, S0: float, ticker: str, out_path: str):
-    """Создает boxplot распределения конечных цен"""
+    """Creates a boxplot of the final price distribution"""
     final_prices = paths[-1, :]
     
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
     
-    # Boxplot конечных цен
+    # Boxplot of final prices
     bp = ax1.boxplot(final_prices, vert=True, patch_artist=True, 
                      widths=0.5, showmeans=True,
                      meanprops=dict(marker='D', markerfacecolor='red', markersize=8),
                      medianprops=dict(color='darkblue', linewidth=2),
                      boxprops=dict(facecolor='lightblue', alpha=0.7))
     
-    ax1.axhline(y=S0, color='green', linestyle='--', linewidth=2, label=f'Начальная цена: ${S0:.2f}')
-    ax1.set_ylabel('Цена ($)', fontsize=12)
-    ax1.set_title(f'{ticker} - Boxplot конечных цен', fontsize=14, fontweight='bold')
+    ax1.axhline(y=S0, color='green', linestyle='--', linewidth=2, label=f'Initial price: ${S0:.2f}')
+    ax1.set_ylabel('Price ($)', fontsize=12)
+    ax1.set_title(f'{ticker} - Boxplot of Final Prices', fontsize=14, fontweight='bold')
     ax1.legend()
     ax1.grid(True, alpha=0.3)
     
-    # Добавляем аннотации
+    # Add annotations
     q1, median, q3 = np.percentile(final_prices, [25, 50, 75])
     mean_val = final_prices.mean()
     ax1.text(1.15, q1, f'Q1: ${q1:.2f}', fontsize=10)
-    ax1.text(1.15, median, f'Медиана: ${median:.2f}', fontsize=10, color='darkblue', fontweight='bold')
+    ax1.text(1.15, median, f'Median: ${median:.2f}', fontsize=10, color='darkblue', fontweight='bold')
     ax1.text(1.15, q3, f'Q3: ${q3:.2f}', fontsize=10)
-    ax1.text(1.15, mean_val, f'Среднее: ${mean_val:.2f}', fontsize=10, color='red', fontweight='bold')
+    ax1.text(1.15, mean_val, f'Mean: ${mean_val:.2f}', fontsize=10, color='red', fontweight='bold')
     
-    # Histogram с процентным изменением
+    # Histogram of percentage changes
     pct_changes = ((final_prices - S0) / S0) * 100
     ax2.hist(pct_changes, bins=100, alpha=0.7, color='steelblue', edgecolor='black')
-    ax2.axvline(x=0, color='green', linestyle='--', linewidth=2, label='Без изменений')
-    ax2.axvline(x=pct_changes.mean(), color='red', linestyle='-', linewidth=2, label=f'Среднее: {pct_changes.mean():.2f}%')
-    ax2.axvline(x=np.median(pct_changes), color='darkblue', linestyle='-', linewidth=2, label=f'Медиана: {np.median(pct_changes):.2f}%')
+    ax2.axvline(x=0, color='green', linestyle='--', linewidth=2, label='No change')
+    ax2.axvline(x=pct_changes.mean(), color='red', linestyle='-', linewidth=2, label=f'Mean: {pct_changes.mean():.2f}%')
+    ax2.axvline(x=np.median(pct_changes), color='darkblue', linestyle='-', linewidth=2, label=f'Median: {np.median(pct_changes):.2f}%')
     
-    ax2.set_xlabel('Изменение цены (%)', fontsize=12)
-    ax2.set_ylabel('Количество сценариев', fontsize=12)
-    ax2.set_title(f'{ticker} - Распределение доходности', fontsize=14, fontweight='bold')
+    ax2.set_xlabel('Price change (%)', fontsize=12)
+    ax2.set_ylabel('Number of simulations', fontsize=12)
+    ax2.set_title(f'{ticker} - Return Distribution', fontsize=14, fontweight='bold')
     ax2.legend()
     ax2.grid(True, alpha=0.3, axis='y')
     
@@ -184,13 +184,13 @@ def main():
         )
         model_info = {"model": "bootstrap", "block": BOOTSTRAP_BLOCK}
     else:
-        raise ValueError('MODEL должен быть "gbm" или "bootstrap"')
+        raise ValueError('MODEL must be "gbm" or "bootstrap"')
 
-    # Генерация дат и квантилей
+    # Generate dates and quantiles
     dates = make_business_days(HORIZON)
     df_q = summarize_quantiles(paths, dates)
     
-    # Расчет процентов роста/падения/флэта
+    # Calculate percentage of growth / decline / flat
     final_prices = paths[-1, :]
     pct_changes = (final_prices - S0) / S0
     
@@ -202,43 +202,43 @@ def main():
     pct_down = (down_count / SIMS) * 100
     pct_flat = (flat_count / SIMS) * 100
     
-    # Сохранение результатов
+    # Save results
     os.makedirs(OUT_DIR, exist_ok=True)
     csv_path = os.path.join(OUT_DIR, f"{TICKER}_quantiles.csv")
     df_q.to_csv(csv_path)
     
-    # Создание графиков
+    # Create charts
     chart_path = os.path.join(OUT_DIR, f"{TICKER}_fan_chart.png")
     plot_fan_chart(df_q, TICKER, chart_path)
     
     boxplot_path = os.path.join(OUT_DIR, f"{TICKER}_boxplot.png")
     plot_boxplot(paths, S0, TICKER, boxplot_path)
     
-    # Вывод информации
+    # Print summary
     print(f"\n{'='*60}")
-    print(f"Тикер: {TICKER}")
-    print(f"Начальная цена: ${S0:.2f}")
-    print(f"Модель: {model_info['model'].upper()}")
-    print(f"Симуляций: {SIMS:,}")
-    print(f"Горизонт: {HORIZON} бизнес-дней")
+    print(f"Ticker: {TICKER}")
+    print(f"Initial price: ${S0:.2f}")
+    print(f"Model: {model_info['model'].upper()}")
+    print(f"Simulations: {SIMS:,}")
+    print(f"Horizon: {HORIZON} business days")
     print(f"{'='*60}")
     
-    print(f"\n Распределение сценариев (через {HORIZON} дней):")
-    print(f"  ⬆️  Рост (>{FLAT_PCT*100:+.1f}%):     {pct_up:6.2f}% ({up_count:,} сценариев)")
-    print(f"  ➡️  Флэт (±{FLAT_PCT*100:.1f}%):    {pct_flat:6.2f}% ({flat_count:,} сценариев)")
-    print(f"  ⬇️  Падение (<{-FLAT_PCT*100:+.1f}%): {pct_down:6.2f}% ({down_count:,} сценариев)")
+    print(f"\n Scenario distribution (after {HORIZON} days):")
+    print(f"   Growth (>{FLAT_PCT*100:+.1f}%):     {pct_up:6.2f}% ({up_count:,} scenarios)")
+    print(f"   Flat (±{FLAT_PCT*100:.1f}%):      {pct_flat:6.2f}% ({flat_count:,} scenarios)")
+    print(f"   Decline (<{-FLAT_PCT*100:+.1f}%): {pct_down:6.2f}% ({down_count:,} scenarios)")
     
-    print(f"\n Квантили конечной цены:")
+    print(f"\n Final price quantiles:")
     final_row = df_q.iloc[-1]
     print(f"  1%:  ${final_row['q01']:.2f}")
     print(f"  5%:  ${final_row['q05']:.2f}")
     print(f"  25%: ${final_row['q25']:.2f}")
-    print(f"  50%: ${final_row['q50']:.2f} (медиана)")
+    print(f"  50%: ${final_row['q50']:.2f} (median)")
     print(f"  75%: ${final_row['q75']:.2f}")
     print(f"  95%: ${final_row['q95']:.2f}")
     print(f"  99%: ${final_row['q99']:.2f}")
     
-    print(f"\n💾 Результаты сохранены:")
+    print(f"\n Results saved:")
     print(f"  CSV: {csv_path}")
     print(f"  Fan Chart: {chart_path}")
     print(f"  Boxplot: {boxplot_path}\n")
