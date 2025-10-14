@@ -28,7 +28,7 @@ Both methods estimate short-term price distributions, generate fan charts and bo
 
 
 ## Project Structure
-
+```bash
 Monte_Carlo/
 │
 ├── main.py                 # Main simulation script
@@ -36,8 +36,9 @@ Monte_Carlo/
 │   ├── NVDA_quantiles.csv  # example
 │   ├── NVDA_fan_chart.png
 │   └── NVDA_boxplot.png
-└── requirements.txt
+└── requirements.txt        # requirements
 
+``` 
 
 ## Requirements
 
