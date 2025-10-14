@@ -1,4 +1,3 @@
-
 import os
 from datetime import datetime, timedelta
 from typing import Optional
@@ -10,13 +9,13 @@ import yfinance as yf
 
 # =================== SETTINGS ===================
 
-TICKER: str = "NVD"     
-HORIZON: int = 30           
+TICKER: str = "NVDA"     
+HORIZON: int = 5           
 SIMS: int = 200000         
 MODEL: str = "bootstrap"   
-BOOTSTRAP_BLOCK: int = 10 
+BOOTSTRAP_BLOCK: int = 7
 LOOKBACK_YEARS: int = 1     
-FLAT_PCT: float = 0.03     
+FLAT_PCT: float = 0.07  # 7% флэт     
 OUT_DIR: str = "outputs"    
 SEED: int = 42              
 
@@ -124,7 +123,7 @@ def plot_fan_chart(df_q: pd.DataFrame, ticker: str, out_path: str):
 
 def main():
     hist = fetch_history(TICKER, lookback_years=LOOKBACK_YEARS)
-    S0 = float(hist["Close"].iloc[-1])
+    S0 = hist["Close"].iloc[-1].item()
     mu, sigma = estimate_params(hist["log_ret"])
 
     if MODEL.lower() == "gbm":
@@ -142,6 +141,59 @@ def main():
         model_info = {"model": "bootstrap", "block": BOOTSTRAP_BLOCK}
     else:
         raise ValueError('MODEL должен быть "gbm" или "bootstrap"')
+
+    # Генерация дат и квантилей
+    dates = make_business_days(HORIZON)
+    df_q = summarize_quantiles(paths, dates)
+    
+    # Расчет процентов роста/падения/флэта
+    final_prices = paths[-1, :]  # Конечные цены всех симуляций
+    pct_changes = (final_prices - S0) / S0
+    
+    up_count = np.sum(pct_changes > FLAT_PCT)
+    down_count = np.sum(pct_changes < -FLAT_PCT)
+    flat_count = np.sum(np.abs(pct_changes) <= FLAT_PCT)
+    
+    pct_up = (up_count / SIMS) * 100
+    pct_down = (down_count / SIMS) * 100
+    pct_flat = (flat_count / SIMS) * 100
+    
+    # Сохранение результатов
+    os.makedirs(OUT_DIR, exist_ok=True)
+    csv_path = os.path.join(OUT_DIR, f"{TICKER}_quantiles.csv")
+    df_q.to_csv(csv_path)
+    
+    # Создание графика
+    chart_path = os.path.join(OUT_DIR, f"{TICKER}_fan_chart.png")
+    plot_fan_chart(df_q, TICKER, chart_path)
+    
+    # Вывод информации
+    print(f"\n{'='*60}")
+    print(f"Тикер: {TICKER}")
+    print(f"Начальная цена: ${S0:.2f}")
+    print(f"Модель: {model_info['model'].upper()}")
+    print(f"Симуляций: {SIMS:,}")
+    print(f"Горизонт: {HORIZON} бизнес-дней")
+    print(f"{'='*60}")
+    
+    print(f"\n📊 Распределение сценариев (через {HORIZON} дней):")
+    print(f"  ⬆️  Рост (>{FLAT_PCT*100:+.1f}%):     {pct_up:6.2f}% ({up_count:,} сценариев)")
+    print(f"  ➡️  Флэт (±{FLAT_PCT*100:.1f}%):    {pct_flat:6.2f}% ({flat_count:,} сценариев)")
+    print(f"  ⬇️  Падение (<{-FLAT_PCT*100:+.1f}%): {pct_down:6.2f}% ({down_count:,} сценариев)")
+    
+    print(f"\n📈 Квантили конечной цены:")
+    final_row = df_q.iloc[-1]
+    print(f"  1%:  ${final_row['q01']:.2f}")
+    print(f"  5%:  ${final_row['q05']:.2f}")
+    print(f"  25%: ${final_row['q25']:.2f}")
+    print(f"  50%: ${final_row['q50']:.2f} (медиана)")
+    print(f"  75%: ${final_row['q75']:.2f}")
+    print(f"  95%: ${final_row['q95']:.2f}")
+    print(f"  99%: ${final_row['q99']:.2f}")
+    
+    print(f"\n💾 Результаты сохранены:")
+    print(f"  CSV: {csv_path}")
+    print(f"  График: {chart_path}\n")
 
    
 if __name__ == "__main__":
